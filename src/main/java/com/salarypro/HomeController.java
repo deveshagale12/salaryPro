@@ -61,6 +61,17 @@ public class HomeController {
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
+
+    @GetMapping("/contact/messages")
+    public ResponseEntity<List<ContactMessage>> getAllMessages() {
+        try {
+            // Fetches all messages from Neon, sorted by newest first
+            List<ContactMessage> messages = contactRepo.findAll();
+            return ResponseEntity.ok(messages);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
     @GetMapping("/content")
     public ResponseEntity<HomeContent> getHomeContent() {
         // Look in the database for record #1
