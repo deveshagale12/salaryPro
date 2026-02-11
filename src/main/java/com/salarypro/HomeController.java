@@ -32,6 +32,9 @@ public class HomeController {
     
     @Autowired
     private EmailService emailService;
+    
+    @Autowired
+    private HomeRepository homeRepository;
 
     @PostMapping("/contact")
     public ResponseEntity<String> handleContact(@RequestBody Map<String, String> data) {
@@ -53,12 +56,18 @@ public class HomeController {
         }
     }
     @GetMapping("/content")
-    public Map<String, String> getHomeContent() {
-        Map<String, String> data = new HashMap<>();
-        data.put("title", this.currentHeroTitle);
-        data.put("subtitle", this.currentHeroSubtitle);
-        data.put("aboutText", this.currentAboutText); // Make sure this variable was updated in update-all
-        return data;
+    public ResponseEntity<HomeContent> getHomeContent() {
+        // Look in the database for record #1
+        return homeRepository.findById(1L)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> {
+                    // If DB is empty, return a default object so the frontend doesn't crash
+                    HomeContent defaultContent = new HomeContent();
+                    defaultContent.setTitle("Welcome to SalaryPro");
+                    defaultContent.setSubtitle("The best payroll solution.");
+                    defaultContent.setAboutText("Default about text...");
+                    return ResponseEntity.ok(defaultContent);
+                });
     }
     
     @PostMapping("/update-text")
@@ -86,57 +95,74 @@ public class HomeController {
         }
     }
     @GetMapping("/photo/{filename}")
-    public ResponseEntity<Resource> getPhoto(@PathVariable String filename) {
-        try {
-            // 1. Define the path to the uploads folder
-            Path filePath = Paths.get("uploads/home/").resolve(filename).normalize();
+    public ResponseEntity<byte[]> getPhoto(@PathVariable String filename) {
+        return homeRepository.findById(1L).map(content -> {
+            byte[] imageBytes = filename.contains("1") ? content.getPhoto1() : content.getPhoto2();
             
-            // 2. Create the UrlResource
-            Resource resource = new UrlResource(filePath.toUri());
+            if (imageBytes == null) return ResponseEntity.notFound().<byte[]>build();
 
-            // 3. Check if file exists and is readable
-            if (resource.exists() || resource.isReadable()) {
-                return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
-        }
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, "image/jpeg")
+                    .body(imageBytes);
+        }).orElse(ResponseEntity.notFound().build());
     }
     @PostMapping("/update-all")
     public ResponseEntity<String> updateAll(
-            @RequestParam("photo1") MultipartFile p1,
-            @RequestParam("photo2") MultipartFile p2,
+            @RequestParam(value = "photo1", required = false) MultipartFile p1,
+            @RequestParam(value = "photo2", required = false) MultipartFile p2,
             @RequestParam("title") String title,
             @RequestParam("subtitle") String subtitle,
             @RequestParam("about") String about) {
         try {
-            // 1. Update the class variables
-            this.currentHeroTitle = title;
-            this.currentHeroSubtitle = subtitle;
-            this.currentAboutText = about; // Save the about text
+            // 1. Always look for ID 1
+            HomeContent content = homeRepository.findById(1L).orElse(new HomeContent());
+            
+            // 2. CRITICAL: Force the ID to be 1 so it overwrites the existing row
+            content.setId(1L); 
+            
+            content.setTitle(title);
+            content.setSubtitle(subtitle);
+            content.setAboutText(about);
 
-            // 2. Ensure the directory exists
-            File directory = new File(UPLOAD_DIR);
-            if (!directory.exists()) {
-                directory.mkdirs(); 
-            }
+            if (p1 != null && !p1.isEmpty()) content.setPhoto1(p1.getBytes());
+            if (p2 != null && !p2.isEmpty()) content.setPhoto2(p2.getBytes());
 
-            // 3. Use Absolute Paths for transferTo (More stable)
-            File dest1 = new File(directory.getAbsolutePath() + File.separator + "banner1.jpg");
-            File dest2 = new File(directory.getAbsolutePath() + File.separator + "banner2.jpg");
-
-            p1.transferTo(dest1);
-            p2.transferTo(dest2);
-
-            return ResponseEntity.ok("Success");
+            // 3. This will now perform an UPDATE instead of an INSERT
+            homeRepository.save(content);
+            
+            return ResponseEntity.ok("Success - Updated record ID 1");
         } catch (Exception e) {
-            // This prints the real error to your IDE console so you can see it
-            e.printStackTrace(); 
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
+    
+	/*
+	 * @PostMapping("/update-all") public ResponseEntity<String> updateAll(
+	 * 
+	 * @RequestParam("photo1") MultipartFile p1,
+	 * 
+	 * @RequestParam("photo2") MultipartFile p2,
+	 * 
+	 * @RequestParam("title") String title,
+	 * 
+	 * @RequestParam("subtitle") String subtitle,
+	 * 
+	 * @RequestParam("about") String about) { try { // 1. Update the class variables
+	 * this.currentHeroTitle = title; this.currentHeroSubtitle = subtitle;
+	 * this.currentAboutText = about; // Save the about text
+	 * 
+	 * // 2. Ensure the directory exists File directory = new File(UPLOAD_DIR); if
+	 * (!directory.exists()) { directory.mkdirs(); }
+	 * 
+	 * // 3. Use Absolute Paths for transferTo (More stable) File dest1 = new
+	 * File(directory.getAbsolutePath() + File.separator + "banner1.jpg"); File
+	 * dest2 = new File(directory.getAbsolutePath() + File.separator +
+	 * "banner2.jpg");
+	 * 
+	 * p1.transferTo(dest1); p2.transferTo(dest2);
+	 * 
+	 * return ResponseEntity.ok("Success"); } catch (Exception e) { // This prints
+	 * the real error to your IDE console so you can see it e.printStackTrace();
+	 * return ResponseEntity.status(500).body("Error: " + e.getMessage()); } }
+	 */
 }
