@@ -36,21 +36,27 @@ public class HomeController {
     @Autowired
     private HomeRepository homeRepository;
 
+   @Autowired
+    private ContactMessageRepository contactRepo;
+
     @PostMapping("/contact")
     public ResponseEntity<String> handleContact(@RequestBody Map<String, String> data) {
         try {
-        	String name = data.get("name");
-            String email = data.get("email");
-            String subject = data.get("subject");
-            String message = data.get("message");
+            // 1. Map data to Entity
+            ContactMessage msg = new ContactMessage();
+            msg.setName(data.get("name"));
+            msg.setEmail(data.get("email"));
+            msg.setSubject(data.get("subject"));
+            msg.setMessage(data.get("message"));
 
-            // Step 1: Notify the Admin (You)
-            emailService.sendContactEmail(email, name, data.get("subject"), data.get("message"));
+            // 2. STORE in Neon Database
+            contactRepo.save(msg);
 
-            // Step 2: Send Auto-Reply to User
-            emailService.sendAutoReply(email, name);
+            // 3. SEND Emails
+            emailService.sendContactEmail(msg.getEmail(), msg.getName(), msg.getSubject(), msg.getMessage());
+            emailService.sendAutoReply(msg.getEmail(), msg.getName());
 
-            return ResponseEntity.ok("Messages processed successfully!");
+            return ResponseEntity.ok("Message saved and sent!");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
