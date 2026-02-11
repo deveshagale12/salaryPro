@@ -1103,6 +1103,24 @@ body {
             </div>
 
         </div>
+        <div class="container mt-5">
+    <h2 class="mb-4">Contact Form Submissions</h2>
+    <div class="table-responsive shadow rounded-4 p-3 bg-white">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Subject</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody id="messageTableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
 
     </div>
 
@@ -1664,7 +1682,30 @@ async function deleteUser(id) {
 
     }
 
+async function fetchContactMessages() {
+    try {
+        const response = await fetch('/api/home/contact/messages');
+        if (response.ok) {
+            const messages = await response.json();
+            const tableBody = document.getElementById('messageTableBody');
+            
+            tableBody.innerHTML = messages.map(msg => `
+                <tr>
+                    <td><small>${new Date(msg.submittedAt).toLocaleString()}</small></td>
+                    <td><strong>${msg.name}</strong></td>
+                    <td><a href="mailto:${msg.email}">${msg.email}</a></td>
+                    <td>${msg.subject}</td>
+                    <td><p class="small text-muted mb-0">${msg.message}</p></td>
+                </tr>
+            `).join('');
+        }
+    } catch (error) {
+        console.error("Failed to fetch messages:", error);
+    }
+}
 
+// Run on page load
+document.addEventListener('DOMContentLoaded', fetchContactMessages);
 
     // 4. INITIATE FINAL PAYMENT (SETTLEMENT)
 
