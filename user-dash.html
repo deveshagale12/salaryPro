@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Employee Dashboard | SalaryPro</title>
+
+    
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+
+
+    <style>
+
+        :root {
+
+            --primary: #4361ee;
+
+            --secondary: #3f37c9;
+
+            --success: #2ec4b6;
+
+            --danger: #e71d36;
+
+            --warning: #ff9f1c;
+
+            --bg-body: #f8f9fd;
+
+            --glass: rgba(255, 255, 255, 0.9);
+
+        }
+
+
+
+        body {
+
+            background-color: var(--bg-body);
+
+            font-family: 'Inter', sans-serif;
+
+            color: #2b2d42;
+
+        }
+
+
+
+        .navbar {
+
+            background: rgba(33, 37, 41, 0.95) !important;
+
+            backdrop-filter: blur(10px);
+
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+
+        }
+
+
+
+        .glass-card {
+
+            background: var(--glass);
+
+            backdrop-filter: blur(15px);
+
+            border: 1px solid rgba(255, 255, 255, 0.7);
+
+            border-radius: 20px;
+
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+
+            transition: all 0.3s ease;
+
+        }
+
+
+
+        .glass-card:hover {
+
+            transform: translateY(-5px);
+
+            box-shadow: 0 15px 35px rgba(67, 97, 238, 0.1);
+
+        }
+
+
+
+        .icon-box {
+
+            width: 48px;
+
+            height: 48px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            border-radius: 14px;
+
+        }
+
+
+
+        .notice-card {
+
+            background: #fff;
+
+            border-radius: 20px;
+
+            border-left: 6px solid var(--warning);
+
+            box-shadow: 0 10px 25px rgba(255, 159, 28, 0.1);
+
+        }
+
+
+
+        .pulse-dot {
+
+            width: 12px;
+
+            height: 12px;
+
+            background-color: var(--warning);
+
+            border-radius: 50%;
+
+            display: inline-block;
+
+            position: relative;
+
+        }
+
+
+
+        .pulse-dot::after {
+
+            content: '';
+
+            position: absolute;
+
+            width: 100%; height: 100%;
+
+            top: 0; left: 0;
+
+            background: inherit;
+
+            border-radius: 50%;
+
+            animation: pulse-ring 1.5s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+
+        }
+
+
+
+        @keyframes pulse-ring {
+
+            0% { transform: scale(0.5); opacity: 1; }
+
+            80%, 100% { transform: scale(2.8); opacity: 0; }
+
+        }
+
+
+
+        .table thead th {
+
+            background: #f1f4f9;
+
+            border: none;
+
+            color: #6c757d;
+
+            font-weight: 600;
+
+            text-transform: uppercase;
+
+            font-size: 0.75rem;
+
+            letter-spacing: 0.5px;
+
+            padding: 15px;
+
+        }
+
+
+
+        .badge-soft-success { background: #e7f9f3; color: var(--success); }
+
+        .badge-soft-danger { background: #fff1f2; color: var(--danger); }
+
+
+
+        @media print { .no-print { display: none !important; } }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+    <nav class="navbar navbar-dark sticky-top px-4 py-3 no-print">
+
+        <span class="navbar-brand fw-bold fs-4">SALARY<span class="text-primary">PRO</span></span>
+
+        <div class="d-flex align-items-center">
+
+            <div class="text-end me-3 d-none d-md-block">
+
+                <div class="text-white small" id="userEmail">loading...</div>
+
+                <div class="text-white-50" style="font-size: 0.7rem;">Employee Portal</div>
+
+            </div>
+
+            <button class="btn btn-primary rounded-pill px-4 btn-sm fw-600" onclick="logout()">Logout</button>
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="container py-5">
+
+        <div id="noticeContainer" class="d-none mb-5 animate__animated animate__fadeIn">
+
+            <div class="notice-card p-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+
+                <div class="d-flex align-items-center">
+
+                    <span class="pulse-dot me-3"></span>
+
+                    <div>
+
+                        <h6 class="mb-0 fw-800">Company Announcement</h6>
+
+                        <div id="adminNoticeText" class="text-muted small mt-1"></div>
+
+                    </div>
+
+                </div>
+
+                <div id="noticeTime" class="badge bg-light text-muted rounded-pill mt-3 mt-md-0 fw-normal border"></div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="row align-items-end mb-5 no-print">
+
+            <div class="col-md-7">
+
+                <h1 class="fw-800 display-6 mb-1" id="welcome" style="font-weight: 800;">Hello!</h1>
+
+                <p class="text-muted mb-0"><i class="bi bi-clock-history me-2"></i><span id="refreshStatus">Data synced.</span></p>
+
+            </div>
+
+            <div class="col-md-5 text-md-end mt-4 mt-md-0">
+
+                <button class="btn btn-white bg-white border shadow-sm rounded-3 me-2" onclick="window.print()">
+
+                    <i class="bi bi-printer me-1"></i> Print
+
+                </button>
+
+                <button class="btn btn-dark shadow rounded-3 px-4" onclick="downloadPDF()">
+
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Download Slip
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+
+        <div id="printableArea">
+
+            <div class="row g-4 mb-5">
+
+                <div class="col-md-4">
+
+                    <div class="glass-card p-4 h-100">
+
+                        <div class="d-flex justify-content-between align-items-start mb-4">
+
+                            <div class="icon-box bg-primary bg-opacity-10 text-primary">
+
+                                <i class="bi bi-lightning-charge-fill fs-4"></i>
+
+                            </div>
+
+                            <span class="badge badge-soft-success">Live</span>
+
+                        </div>
+
+                        <div class="text-muted small fw-bold text-uppercase mb-1">Total Earned</div>
+
+                        <h2 id="total" class="fw-800 mb-0">₹0</h2>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="glass-card p-4 h-100">
+
+                        <div class="d-flex justify-content-between align-items-start mb-4">
+
+                            <div class="icon-box bg-danger bg-opacity-10 text-danger">
+
+                                <i class="bi bi-arrow-down-right-circle fs-4"></i>
+
+                            </div>
+
+                        </div>
+
+                        <div class="text-muted small fw-bold text-uppercase mb-1">Total Advance</div>
+
+                        <h2 id="advance" class="fw-800 mb-0">₹0</h2>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="glass-card p-4 h-100 bg-primary text-white">
+
+                        <div class="d-flex justify-content-between align-items-start mb-4">
+
+                            <div class="icon-box bg-white bg-opacity-20 text-white">
+
+                                <i class="bi bi-piggy-bank fs-4"></i>
+
+                            </div>
+
+                        </div>
+
+                        <div class="opacity-75 small fw-bold text-uppercase mb-1">Net Payout Due</div>
+
+                        <h2 id="net" class="fw-800 mb-0 text-white">₹0</h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="row mb-5 no-print">
+
+                <div class="col-12">
+
+                    <div class="glass-card p-4">
+
+                        <h5 class="fw-bold mb-4">Financial Insights</h5>
+
+                        <div style="height: 300px;">
+
+                            <canvas id="earningChart"></canvas>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="glass-card overflow-hidden">
+
+                <div class="p-4 d-flex justify-content-between align-items-center bg-white border-bottom">
+
+                    <h5 class="fw-bold mb-0">Recent Transactions</h5>
+
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 no-print" onclick="downloadExcel()">
+
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export
+
+                    </button>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover align-middle mb-0">
+
+                        <thead>
+
+                            <tr>
+
+                                <th class="ps-4">Date</th>
+
+                                <th>Note</th>
+
+                                <th>Type</th>
+
+                                <th class="text-end pe-4">Amount</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="historyTable"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <script>
+
+    let myChart = null;
+
+
+
+    // Initialization
+
+    async function loadDashboard() {
+
+        const userData = localStorage.getItem('user');
+
+        if(!userData) { window.location.href = 'user-login.html'; return; }
+
+        
+
+        const user = JSON.parse(userData);
+
+        document.getElementById('welcome').innerText = `Hello, ${user.name || 'User'}`;
+
+        if(user.email) document.getElementById('userEmail').innerText = user.email;
+
+
+
+        // FETCH ALL FEATURES
+
+        await fetchNotice();
+
+        await refreshDataOnly();
+
+    }
+
+
+
+    // ANNOUNCEMENT FEATURE
+
+    async function fetchNotice() {
+
+        try {
+
+            const res = await fetch('/api/admin/notice'); 
+
+            if (res.ok) {
+
+                const data = await res.json();
+
+                const container = document.getElementById('noticeContainer');
+
+                if (data && data.content && data.content.trim() !== "") {
+
+                    container.classList.remove('d-none');
+
+                    document.getElementById('adminNoticeText').innerText = data.content;
+
+                    document.getElementById('noticeTime').innerHTML = `<i class="bi bi-clock me-1"></i> ${data.timestamp || ''}`;
+
+                } else {
+
+                    container.classList.add('d-none');
+
+                }
+
+            }
+
+        } catch (e) { console.warn("Notice fetch failed"); }
+
+    }
+
+
+
+    // SALARY DATA SYNC
+
+    async function refreshDataOnly() {
+
+        const userData = localStorage.getItem('user');
+
+        if(!userData) return;
+
+        const user = JSON.parse(userData);
+
+
+
+        try {
+
+            const res = await fetch(`/api/salary/my-summary/${user.id}`);
+
+            if (res.ok) {
+
+                const data = await res.json();
+
+                
+
+                const earned = data.totalEarned || data.totalAmount || data.earned || 0;
+
+                const advance = data.advanceTaken || data.advanceAmount || data.totalAdvance || 0;
+
+                const net = data.netPayable || (earned - advance);
+
+
+
+                document.getElementById('total').innerText = `₹${Number(earned).toLocaleString('en-IN')}`;
+
+                document.getElementById('advance').innerText = `₹${Number(advance).toLocaleString('en-IN')}`;
+
+                document.getElementById('net').innerText = `₹${Number(net).toLocaleString('en-IN')}`;
+
+
+
+                if(data.dailyRecords) {
+
+                    populateTable(data.dailyRecords);
+
+                    renderChart(data.dailyRecords);
+
+                }
+
+            }
+
+        } catch(e) { console.error("Sync Failed:", e); }
+
+    }
+
+
+
+    function renderChart(records) {
+
+        const canvas = document.getElementById('earningChart');
+
+        if(!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+
+        const daysMap = {};
+
+     // Inside renderChart function
+
+        const sortedRecords = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        sortedRecords.forEach(r => {
+
+            const d = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+
+            if(!daysMap[d]) daysMap[d] = { earned: 0, adv: 0 };
+
+            const amount = r.dailyAmount || r.amount || 0;
+
+            if(r.type === 'SALARY') daysMap[d].earned += amount;
+
+            else daysMap[d].adv += amount;
+
+        });
+
+
+
+        const labels = Object.keys(daysMap);
+
+        if(myChart) myChart.destroy();
+
+        
+
+        myChart = new Chart(ctx, {
+
+            type: 'line',
+
+            data: {
+
+                labels: labels,
+
+                datasets: [
+
+                    { 
+
+                        label: 'Earnings', 
+
+                        data: labels.map(l => daysMap[l].earned), 
+
+                        borderColor: '#4361ee', 
+
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)', 
+
+                        fill: true, tension: 0.4 
+
+                    },
+
+                    { 
+
+                        label: 'Advances', 
+
+                        data: labels.map(l => daysMap[l].adv), 
+
+                        borderColor: '#e71d36', 
+
+                        backgroundColor: 'rgba(231, 29, 54, 0.1)', 
+
+                        fill: true, tension: 0.4 
+
+                    }
+
+                ]
+
+            },
+
+            options: { responsive: true, maintainAspectRatio: false }
+
+        });
+
+    }
+
+
+
+    /* function populateTable(records) {
+
+        const tableBody = document.getElementById('historyTable');
+
+        const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        tableBody.innerHTML = sorted.map(r => {
+
+            const isSalary = r.type === 'SALARY';
+
+            return `
+
+                <tr>
+
+                    <td class="ps-4 fw-bold small">${new Date(r.date).toLocaleDateString('en-IN')}</td>
+
+                    <td class="text-muted small">${r.note || 'General'}</td>
+
+                    <td><span class="badge ${isSalary ? 'badge-soft-success' : 'badge-soft-danger'} rounded-pill">${r.type}</span></td>
+
+                    <td class="text-end pe-4 fw-bold ${isSalary ? 'text-success' : 'text-danger'}">${isSalary ? '+' : '-'} ₹${(r.dailyAmount || r.amount || 0).toLocaleString('en-IN')}</td>
+
+                </tr>`;
+
+        }).join('');
+
+    } */
+
+    
+
+    function populateTable(records) {
+
+        const tableBody = document.getElementById('historyTable');
+
+        
+
+        if (!records || records.length === 0) {
+
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">No transactions found</td></tr>';
+
+            return;
+
+        }
+
+
+
+        // 1. Sort Logic: Newest Date First
+
+        const sorted = [...records].sort((a, b) => {
+
+            const dateA = new Date(a.date).getTime();
+
+            const dateB = new Date(b.date).getTime();
+
+            
+
+            // If dates are exactly the same, sort by ID (if available) to maintain order
+
+            if (dateB === dateA && (a.id || b.id)) {
+
+                return b.id - a.id; 
+
+            }
+
+            return dateB - dateA; 
+
+        });
+
+
+
+        // 2. Map and Render
+
+        tableBody.innerHTML = sorted.map(r => {
+
+            const isSalary = r.type === 'SALARY';
+
+            
+
+            // Professional Date Format: e.g., "28 Jan 2026"
+
+            const formattedDate = new Date(r.date).toLocaleDateString('en-IN', {
+
+                day: '2-digit',
+
+                month: 'short',
+
+                year: 'numeric'
+
+            });
+
+
+
+            const amount = r.dailyAmount || r.amount || 0;
+
+
+
+            return `
+
+                <tr class="animate__animated animate__fadeIn">
+
+                    <td class="ps-4">
+
+                        <div class="fw-bold mb-0">${formattedDate}</div>
+
+                        <div class="text-muted" style="font-size: 0.7rem;">
+
+                            ${new Date(r.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+
+                        </div>
+
+                    </td>
+
+                    <td>
+
+                        <div class="text-dark small fw-medium">${r.note || 'General Entry'}</div>
+
+                    </td>
+
+                    <td>
+
+                        <span class="badge ${isSalary ? 'badge-soft-success' : 'badge-soft-danger'} rounded-pill">
+
+                            <i class="bi ${isSalary ? 'bi-plus-circle' : 'bi-dash-circle'} me-1"></i>
+
+                            ${r.type}
+
+                        </span>
+
+                    </td>
+
+                    <td class="text-end pe-4">
+
+                        <span class="fw-800 ${isSalary ? 'text-success' : 'text-danger'}">
+
+                            ${isSalary ? '+' : '-'} ₹${amount.toLocaleString('en-IN')}
+
+                        </span>
+
+                    </td>
+
+                </tr>`;
+
+        }).join('');
+
+    }
+
+
+
+    function downloadPDF() {
+
+        const element = document.getElementById('printableArea');
+
+        html2pdf().from(element).save('Salary_Slip.pdf');
+
+    }
+
+
+
+    function downloadExcel() {
+
+        const wb = XLSX.utils.table_to_book(document.querySelector(".table"));
+
+        XLSX.writeFile(wb, "Transactions.xlsx");
+
+    }
+
+
+
+    function logout() { localStorage.clear(); window.location.href='user-login.html'; }
+
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+        loadDashboard();
+
+        setInterval(() => { refreshDataOnly(); fetchNotice(); }, 30000);
+
+    });
+
+    </script>
+
+</body>
+
+</html>
