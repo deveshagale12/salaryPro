@@ -481,27 +481,34 @@ to {opacity: 1;}}
 	<script>
 	// Function to handle the home page sync
 	async function initializeDynamicHome() {
-	    const time = new Date().getTime(); 
-	    try {
-	        const response = await fetch('/api/home/content');
-	        if (response.ok) {
-	            const data = await response.json();
-	            console.log("Live Sync Data:", data);
+    const time = Date.now(); // Slightly faster than new Date().getTime()
+    
+    // 1. Prepare image updates (doesn't need to wait for fetch)
+    const updateImages = () => {
+        document.getElementById('banner1').src = `/api/home/photo/banner1.jpg?v=${time}`;
+        document.getElementById('banner2').src = `/api/home/photo/banner2.jpg?v=${time}`;
+    };
 
-	            if(data.title) document.getElementById('heroTitle').innerText = data.title;
-	            if(data.subtitle) document.getElementById('heroSubtitle').innerText = data.subtitle;
-	            if(data.aboutText) document.getElementById('displayAboutText').innerText = data.aboutText;
-	        }
-	        
-	        // Update Images
-	        document.getElementById('banner1').src = `/api/home/photo/banner1.jpg?v=${time}`;
-	        document.getElementById('banner2').src = `/api/home/photo/banner2.jpg?v=${time}`;
+    try {
+        // 2. Run both tasks in parallel
+        const [response] = await Promise.all([
+            fetch('/api/home/content'),
+            updateImages() 
+        ]);
 
-	    } catch (error) {
-	        console.error("Critical Sync Error:", error);
-	    }
-	}
+        if (!response.ok) throw new Error('Network response was not ok');
 
+        const data = await response.json();
+
+        // 3. Batch DOM updates
+        if (data.title) document.getElementById('heroTitle').textContent = data.title;
+        if (data.subtitle) document.getElementById('heroSubtitle').textContent = data.subtitle;
+        if (data.aboutText) document.getElementById('displayAboutText').textContent = data.aboutText;
+
+    } catch (error) {
+        console.error("Critical Sync Error:", error);
+    }
+}
 	// Function to handle the contact form
 	function setupContactForm() {
 	    const contactForm = document.getElementById('contactForm');
